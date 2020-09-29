@@ -17,7 +17,7 @@ from sklearn.pipeline import Pipeline
 from sklearn.compose import ColumnTransformer
 from sklearn.tree import DecisionTreeClassifier, plot_tree
 from sklearn.linear_model import LogisticRegression
-from sklearn.ensemble import RandomForestClassifier
+from sklearn.ensemble import RandomForestClassifier, StackingClassifier
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.svm import SVC
 from xgboost import XGBClassifier
@@ -417,10 +417,12 @@ class Stopwatch:
                 x = [(x[1] - self.start_time).total_seconds() 
                      for x in times]
                 if minutes_elapsed:
+                    elapsed_str = 'Elapsed Time (min)'
                     x = [round(a/60, 2) for a in x]
-                    ax.set(xlabel='Elapsed Time (min)')
+                    ax.set(xlabel=elapsed_str)
                 else:
-                    ax.set(xlabel='Elapsed Time (sec)')
+                    elapsed_str = 'Elapsed Time (sec)'
+                    ax.set(xlabel=elapsed_str)
             else:
                 x = [a[1] for a in times]
                 ax.set(xlabel='Time Recorded')
@@ -451,7 +453,7 @@ class Stopwatch:
         if verbose:
             df = pd.DataFrame(times, columns=['Label', 'Timestamp'])
             if mark_elapsed_time:
-                df['Elapsed Time (sec)'] = x
+                df[elapsed_str] = x
             display(df)
         plt.show()
 
