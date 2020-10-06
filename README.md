@@ -1,190 +1,475 @@
+# *Predicting the Condition of Water Pumps in Tanzania.*
 
-# Module 3 Final Project
+Homepage: https://www.drivendata.org/competitions/7/pump-it-up-data-mining-the-water-table/page/23/
 
+***
+There are thousands of water pumps in the country of Tanzania, many of which are an integral part of their area's sustainability. However, many of these pumps are known to be in need of maintenance (or not working entirely). 
 
-## Introduction
-
-In this lesson, we'll review all the guidelines and specifications for the final project for Module 3.
-
+<img src='images/pumping.png'>
 
 ## Objectives
 
-- Understand all required aspects of the Final Project for Module 3
-- Understand all required deliverables
-- Understand what constitutes a successful project
+- The goal is to use data on water pumps in Tanzania to predict the condition of the pump.
+- Using this information, we can make smart, data-driven decisions on how to allocate resources in order to maintain / fix pumps which are most in need.
+- If successful, the predictions made by these models will be able to improve maintenance operations for these water pumps and significantly improve many people's quality of life.
+
+### Success Criteria
+From the competition website:
+> **PRIMARY EVALUATION METRIC:**
+Classification Rate = $\frac{1}{N}\sum_{i=0}^{N} (y_i = \hat{y}_i)$
+
+> The metric used for this competition is the classification rate, which calculates the percentage of rows where the predicted class $\hat{y}$ in the submission matches the actual class, $y$ in the test set. The maximum is 1 and the minimum is 0. The goal is to maximize the classification rate.
+
+**The current top score is 0.8294** *(23SEP2020)*
+- This is the same as the *accuracy score.*
+- The target variable is **`status_group`**. This is divided into three categories: `['functional', 'functional needs repair', 'non functional']`.
+- It is an unbalanced dataset (there are far more `functional` water pumps).
+```
+functional                 54 %
+non functional             38 %
+functional needs repair     7 %
+```
+- A baseline model (which always guesses a pump to be `functional`) will have an accuracy score of 0.54. 
+- **A successful model will have a strong accuracy - the ability to correctly identify as many data points as possible.**
+
+# The Repo
+*The repo is divided into two notebooks: **1_processing** and **2_modeling**.*
+
+*The outline for the notebooks can be found below, along with insights and some comments throughout.*
+
+# PART 1 - PROCESSING
+
+## The Data
+
+The data has been collected from Taarifa (http://taarifa.org/) and the Tanzanian Ministry of Water. 
+
+From Taarifa:
+> *Taarifa is an open source platform for the crowd sourced reporting and triaging of infrastructure related issues. Think of it as a bug tracker for the real world which helps to engage citizens with their local government. We are currently working on an Innovation Project in Tanzania, with various partners.*
+
+
+### `train_test_split()`
+Even though there is a literal "*test data*" provided for the competition, it is unlabeled and can not be used to verify models.
+
+We will still need a test-train split.
+
+## EDA
+
+***
+### Column Descriptions
+
+*From https://www.drivendata.org/competitions/7/pump-it-up-data-mining-the-water-table/page/25/*
+
+- **amount_tsh** - Total static head (amount water available to waterpoint)
+- **date_recorded** - The date the row was entered
+- **funder** - Who funded the well
+- **gps_height** - Altitude of the well
+- **installer** - Organization that installed the well
+- **longitude** - GPS coordinate
+- **latitude** - GPS coordinate
+- **wpt_name** - Name of the waterpoint if there is one
+- **num_private** -
+- **basin** - Geographic water basin
+- **subvillage** - Geographic location
+- **region** - Geographic location
+- **region_code** - Geographic location (coded)
+- **district_code** - Geographic location (coded)
+- **lga** - Geographic location
+- **ward** - Geographic location
+- **population** - Population around the well
+- **public_meeting** - True/False
+- **recorded_by** - Group entering this row of data
+- **scheme_management** - Who operates the waterpoint
+- **scheme_name** - Who operates the waterpoint
+- **permit** - If the waterpoint is permitted
+- **construction_year** - Year the waterpoint was constructed
+- **extraction_type** - The kind of extraction the waterpoint uses
+- **extraction_type_group** - The kind of extraction the waterpoint uses
+- **extraction_type_class** - The kind of extraction the waterpoint uses
+- **management** - How the waterpoint is managed
+- **management_group** - How the waterpoint is managed
+- **payment** - What the water costs
+- **payment_type** - What the water costs
+- **water_quality** - The quality of the water
+- **quality_group** - The quality of the water
+- **quantity** - The quantity of water
+- **quantity_group** - The quantity of water
+- **source** - The source of the water
+- **source_type** - The source of the water
+- **source_class** - The source of the water
+- **waterpoint_type** - The kind of waterpoint
+- **waterpoint_type_group** - The kind of waterpoint
+
+***
+
+- Most of this is self-explanatory, but I can see there are many redundant columns (eg: source, source_type, source_class). 
+- Going though, we'll try to make intelligent choices when it comes to these categories.
+
+### Comments
+
+***
+
+- There are many columns representing **geographical location**. It might be a good idea to compile these columns and thoughtfully select which one/ones are the best predictors.
+- There are many columns which seem to be **duplicated** or redundant. It would be worthwhile to see if we can join or remove these columns somehow.
+- There are many more categorical columns than continuous columns.
 
-## Final Project Summary
+## Feature Engineering
 
-Congratulations! You've made it through another _intense_ module, and now you're ready to show off your newfound Machine Learning skills!
+### Creating columns
 
-![awesome](https://raw.githubusercontent.com/learn-co-curriculum/dsc-mod-3-project-v2-1/master/smart.gif)
+- Create `years_old` column.
+- Make categorical column - `amount_tsh` > 0.
+- Engineer `gps_height` into three binned values.
+- Engineer column: `installer` == `DWE`.
 
-All that remains for Module 3 is to complete the final project!
-
-## The Project
-
-The main goal of this project is to create a classification model. For this project you have the choice to either:
-
-- choose a data set from a curated list
-- choose your own data set _outside_ of the curated list. 
-
-The data guidelines for either option are shown below
-
-For this project, you're going to select a dataset of your choosing and create a classification model. You'll start by identifying a problem you can solve with classification, and then identify a dataset. You'll then use everything you've learned about Data Science and Machine Learning thus far to source a dataset, preprocess and explore it, and then build and interpret a classification model that answers your chosen question.
-
-### a. Choosing the data from a curated list
-
-You are allowed to select one of the four data sets described below. Each comes with its own advantages and disadvantages, and, of course, its own associated business problem and stakeholders. It may be desirable to flesh out your understanding of the audience or the business proposition a little more than sketched out here. If you select one of these four data sets, you **need no further approval from your instructor**.
-
-
-1) [Chicago Car Crash Data](https://data.cityofchicago.org/Transportation/Traffic-Crashes-Crashes/85ca-t3if). Note this links also to [Vehicle Data](https://data.cityofchicago.org/Transportation/Traffic-Crashes-Vehicles/68nd-jvt3) and to [Driver/Passenger Data](https://data.cityofchicago.org/Transportation/Traffic-Crashes-People/u6pd-qa9d).
-
-Build a classifier to predict the primary contributory cause of a car accident, given information about the car, the people in the car, the road conditions etc. You might imagine your audience as a Vehicle Safety Board who's interested in reducing traffic accidents, or as the City of Chicago who's interested in becoming aware of any interesting patterns. Note that there is a **multi-class** classification problem. You will almost certainly want to bin or trim or otherwise limit the number of target categories on which you ultimately predict. Note e.g. that some primary contributory causes have very few samples.
-
-2) [Terry Stops Data](https://catalog.data.gov/dataset/terry-stops).
-In [*Terry v. Ohio*](https://www.oyez.org/cases/1967/67), a landmark Supreme Court case in 1967-8, the court found that a police officer was not in violation of the "unreasonable search and seizure" clause of the Fourth Amendment, even though he stopped and frisked a couple of suspects only because their behavior was suspicious. Thus was born the notion of "reasonable suspicion", according to which an agent of the police may e.g. temporarily detain a person, even in the absence of clearer evidence that would be required for full-blown arrests etc. Terry Stops are stops made of suspicious drivers.
-
-Build a classifier to predict whether an arrest was made after a Terry Stop, given information about the presence of weapons, the time of day of the call, etc. Note that this is a **binary** classification problem.
-
-Note that this dataset also includes information about gender and race. You **may** use this data as well. You may, e.g. pitch your project as an inquiry into whether race (of officer or of subject) plays a role in whether or not an arrest is made.
-
-If you **do** elect to make use of race or gender data, be aware that this can make your project a highly sensitive one; your discretion will be important, as well as your transparency about how you use the data and the ethical issues surrounding it.
-
-3) [Customer Churn Data](https://www.kaggle.com/becksddf/churn-in-telecoms-dataset)
-
-Build a classifier to predict whether a customer will ("soon") stop doing business with SyriaTel, a telecommunications company. Note that this is a **binary** classification problem.
-
-Most naturally, your audience here would be the telecom business itself, interested in losing money on customers who don't stick around very long. Are there any predictable patterns here?
-
-4) [Tanzanian Water Well Data](https://www.drivendata.org/competitions/7/pump-it-up-data-mining-the-water-table/page/23/) (*active competition*!)
-Tanzania, as a developing country, struggles with providing clean water to its population of over 57,000,000. There are many waterpoints already established in the country, but some are in need of repair while others have failed altogether.
-
-Build a classifier to predict the condition of a water well, using information about the sort of pump, when it was installed, etc. Note that this is a **ternary** classification problem.
-
-
-### b. Selecting a Data Set _Outside_ of the Curated List
-
-We encourage you to be very thoughtful when identifying your problem and selecting your data set--an overscoped project goal or a poor data set can quickly bring an otherwise promising project to a grinding halt. **If you are going to choose your own data set, you'll need to run it by your instructor for approval**.
-
-To help you select an appropriate data set for this project, we've set some guidelines:
-
-1. Your dataset should work for classification. The classification task can be either binary or multiclass, as long as it's a classification model.   
-
-2. Your dataset needs to be of sufficient complexity. Try to avoid picking an overly simple dataset. Try to avoid extremely small datasets, as well as the most common datasets like titanic, iris, MNIST, etc. We want to see all the steps of the Data Science Process in this project--it's okay if the dataset is mostly clean, but we expect to see some preprocessing and exploration. See the following section, **_Data Set Constraints_**, for more information on this.   
-
-3. On the other end of the spectrum, don't pick a problem that's too complex, either. Stick to problems that you have a clear idea of how you can use machine learning to solve it. For now, we recommend you stay away from overly complex problems in the domains of Natural Language Processing or Computer Vision--although those domains make use of Supervised Learning, they come with a lot of other special requirements and techniques that you don't know yet (but you'll learn soon!). If you're chosen problem feels like you've overscoped, then it probably is. If you aren't sure if your problem scope is appropriate, double check with your instructor!  
-
-#### Data Set Constraints
-
-When selecting a data set, be sure to take into consideration the following constraints:
-
-1. Your data set can't be one we've already worked with in any labs.
-2. Your data set should contain a minimum of 1000 rows.    
-3. Your data set should contain a minimum of 10 predictor columns, before any one-hot encoding is performed.   
-4. Your instructor must provide final approval on your data set.
-
-#### Problem First, or Data First?
-
-There are two ways that you can about getting started: **_Problem-First_** or **_Data-First_**.
-
-**_Problem-First_**: Start with a problem that you want to solve with classification, and then try to find the data you need to solve it.  If you can't find any data to solve your problem, then you should pick another problem.
-
-**_Data-First_**: Take a look at some of the most popular internet repositories of cool data sets we've listed below. If you find a data set that's particularly interesting for you, then it's totally okay to build your problem around that data set.
-
-There are plenty of amazing places that you can get your data from. We recommend you start looking at data sets in some of these resources first:
-
-* [UCI Machine Learning Datasets Repository](https://archive.ics.uci.edu/ml/datasets.html)
-* [Kaggle Datasets](https://www.kaggle.com/datasets)
-* [Awesome Datasets Repo on Github](https://github.com/awesomedata/awesome-public-datasets)
-* [New York City Open Data Portal](https://opendata.cityofnewyork.us/)
-* [Inside AirBNB ](http://insideairbnb.com/)
-
-
-## The Deliverables
-
-For online students, your completed project should contain the following four deliverables:
-
-1. A **_Jupyter Notebook_** containing any code you've written for this project. This work will need to be pushed to a public GitHub repository dedicated for this project.
-
-2. An organized **README.md** file in the GitHub repository that describes the contents of the repository. This file should be the source of information for navigating through the repository. 
-
-3. A **_[Blog Post](https://github.com/learn-co-curriculum/dsc-welcome-blogging-v2-1)_**.
-
-4. An **_"Executive Summary" PowerPoint Presentation_** that gives a brief overview of your problem/dataset, and each step of the OSEMN process.
-
-Note: On-campus students may have different deliverables, please speak with your instructor.
-
-### Jupyter Notebook Must-Haves
-
-For this project, your Jupyter Notebook should meet the following specifications:
-
-**_Organization/Code Cleanliness_**
-
-* The notebook should be well organized, easy to follow, and code is commented where appropriate.  
-    * Level Up: The notebook contains well-formatted, professional looking markdown cells explaining any substantial code. All functions have docstrings that act as professional-quality documentation.  
-* The notebook is written to technical audiences with a way to both understand your approach and reproduce your results. The target audience for this deliverable is other data scientists looking to validate your findings.  
-
-**_Process, Methodology, and Findings_**
-
-* Your notebook should contain a clear record of your process and methodology for exploring and preprocessing your data, building and tuning a model, and interpreting your results.
-* We recommend you use the OSEMN process to help organize your thoughts and stay on track.
-
-### Blog Post Must-Haves
-
-Refer back to the [Blogging Guidelines](https://github.com/learn-co-curriculum/dsc-welcome-blogging-v2-1) for the technical requirements and blog ideas.
-
-## The Process
-
-These steps are informed by Smart Vision's<sup>1</sup> description of the CRISP-DM process.
-
-### 1. Business Understanding
-
-Start by reading this document, and making sure that you understand the kinds of questions being asked.  In order to narrow your focus, you will likely want to make some design choices about your specific audience, rather than addressing all of the "many people" mentioned in the background section.  Do you want to emphasize affordability, investment, or something else?  This framing will help you choose which stakeholder claims to address.
-
-Three things to be sure you establish during this phase are:
-
-1. **Objectives:** what questions are you trying to answer, and for whom?
-2. **Project plan:** you may want to establish more formal project management practices, such as daily stand-ups or using a Trello board, to plan the time you have remaining.  Regardless you should determine the division of labor, communication expectations, and timeline.
-3. **Success criteria:** what does a successful project look like?  How will you know when you have achieved it?
-
-### 2. Data Understanding
-
-Write a script to download the data (or instructions for future users on how to manually download it), and explore it.  Do you understand what the columns mean?  How do the three data tables relate to each other?  How will you select the subset of relevant data?  What kind of data cleaning is required?
-
-It may be useful to generate visualizations of the data during this phase.
-
-### 3. Data Preparation
-
-Through SQL and Pandas, perform any necessary data cleaning and develop a query that pulls in all relevant data for analysis in a linear regression model, including any merging of tables.  Be sure to document any data that you choose to drop or otherwise exclude.  This is also the phase to consider any feature scaling or one-hot encoding required to feed the data into a classification model.
-
-### 4. Modeling
-
-The focus this time is on prediction. Good prediction is a matter of the model generalizing well. Steps we can take to assure good generalization include: testing the model on unseen data, cross-validation, and regularization. What sort of model should you build? A diverse portfolio is probably best. Classification models we've looked at so far include logistic regression, decision trees, bagging, and boosting, each of these with different flavors. You are encouraged to try any or all of these.
-
-### 5. Evaluation
-
-Recall that there are many different metrics we might use for evaluating a classification model. Accuracy is intuitive, but can be misleading, especially if you have class imbalances in your target. Perhaps, depending on you're defining things, it is more important to minimize false positives, or false negatives. It might therefore be more appropriate to focus on precision or recall. You might also calculate the AUC-ROC to measure your model's *discrimination*.
-
-### 6. Deployment
-
-In this case, your "deployment" comes in the form of the deliverables listed above. Make sure you can answer the following questions about your process:
-
- - "How did you pick the question(s) that you did?"
- - "Why are these questions important from a business perspective?"
- - "How did you decide on the data cleaning options you performed?"
- - "Why did you choose a given method or library?"
- - "Why did you select those visualizations and what did you learn from each of them?"
- - "Why did you pick those features as predictors?"
- - "How would you interpret the results?"
- - "How confident are you in the predictive quality of the results?"
- - "What are some of the things that could cause the results to be wrong?"
-
-
-## Grading Rubric 
-
-Online students can find a PDF of the grading rubric for the project [here](https://github.com/learn-co-curriculum/dsc-mod-3-project-v2-1/blob/master/module_3_project_rubric.pdf). _Note: On-campus students may have different requirements, please speak with your instructor._ 
-
-
-## Citation
-
-1. "What is the CRISP-DM Methodology?" Smart Vision Europe. Available at: https://www.sv-europe.com/crisp-dm-methodology/
+### Checking seemingly identical columns
+- `extraction` vs `extraction_type` vs `extraction_group_type`
+- `payment` vs `payment_type`
+- `water_quality` vs `quality_group`
+- `quantity_group`
+- `source_type` and `source_class`.
+
+### Feature Selection with Decision Tree
+#### Geographic Columns
+Since there are an unbelievable number of categories in some of these columns, I'm going to utilize a Decision Tree Classifier to choose the most important features from these columns. From these, I will drop the column but keep the most important n-columns.
+<img src='images/imp_geo_feats.png'>
+**For example:**
+<img src='images/example_geo.png'>
+You can see clearly the difference in distribution of functional water pumps based on whether or not a pump belongs to the region Iringa.
+
+#### `funder` Column
+Similarly to the geographical columns which were too numerous to include, there are way too many unique categories for `funder`.
+<img src='images/imp_fund_feats.png'>
+<img src='images/example_fund.png'>
+Over half of pumps funded by the Government of Tanzania are non-functional.
+
+## Missing Values
+<img src='images/missing.png'>
+
+## Preprocessing with Pipeline
+### Column Transformer
+<img src='images/transformer.png'>
+
+## Feature Selecting: Identify Constant and Correlated Columns
+
+|  | feat1 | feat2 | correlation_coef |  |
+|-|-|-|-|-|
+303 |	gps_height |	altitude_cat_high_altitude |	0.925433
+304 |	gps_height |	altitude_cat_low_altitude |	0.799247
+4169 |	lga_Hai |	funder_Germany Republi |	0.981528
+5841 |	funder_Germany | Republi	lga_Hai |	0.981528
+9087 |	public_meeting_False |	public_meeting_True |	0.751523
+
+### Finding groups of correlated features.
+
+> **The plan**:
+- Iterate through each unique feature from the `feat1` column above.
+- Find all rows where that feature appears.
+- Use these rows to get a list of features (`feat2`) that are highly correlated with the given feature.
+- Append all of these features to a list to be sure not to get redundant groups of features.
+
+Each group of correlated features will be a dataframe from the above list.
+
+**For example:**
+
+| | feat1 |	feat2 |	correlation_coef | |
+|-|-|-|-|-|
+303 |	gps_height |	altitude_cat_high_altitude |	0.925433
+304 |	gps_height |	altitude_cat_low_altitude |	0.799247
+
+Now that we have these groups or correlated features, we want to find out which ones to keep. Keeping all of these features can confuse the importance of certain features when modeling.
+> **The plan**:
+- Use a Decision Tree Classifier for each group of correlated features to pick the most important one.
+- Show all groups of features and their respective importances.
+
+**For example:**
+
+| | feature |	importance | |
+|-|-|-|-|
+2 |	gps_height |	0.999824
+0 |	altitude_cat_high_altitude |	0.000161
+1 |	altitude_cat_low_altitude |	0.000016
+
+## Dump `num_feature_names` & `cat_feature_names`
+Saving feature names for the next notebook.
+
+## Encoding Target
+Using LabelEncoder.
+
+## Set `id` back for unlabeled data.
+Saving `id` for the competition dataset.
+
+## Writing Processed Data
+Saving dataframes.
+
+## Writing Preprocessing Pipeline / LabelEncoder
+Saving Pipeline and LabelEncoder.
+
+# PART 2 - MODELING
+
+## Modeling Goals
+- The aim of the competition is a plain `accuracy_score` for unlabeled data.
+- From a financial perspective, the allocation of maintenance resources is vital, therefore correctly labeling the pumps which are *functional needs repair* and *non functional* can be considered the most important.
+
+### Reload Data
+Reload from processing notebook.
+
+## Modeling
+In this notebook, we will be using a dummy-classifier and three predictive models.
+- Random Forest Classifier
+- K-Nearest Neighbors
+- XGBoost Classifier
+
+### Baseline - Dummy Classifier
+
+### Random Forest Classifier
+#### Vanilla Model
+```python
+"""
+************************************************************************
+*        Vanilla Random Forest Classifier Classification Report        *
+************************************************************************
+                         precision    recall  f1-score   support
+
+             functional       0.81      0.88      0.85      8065
+functional needs repair       0.53      0.35      0.42      1079
+         non functional       0.84      0.78      0.81      5706
+
+               accuracy                           0.81     14850
+              macro avg       0.73      0.67      0.69     14850
+           weighted avg       0.80      0.81      0.80     14850
+"""
+```
+<img src='images/vanilla_forest.png'>
+Having a vanilla Random Forest score `0.81` accuracy is pretty impressive.
+<img src='images/forest_feat_imp.png'>
+
+#### Forest GridSearch
+For each model type, we will try to tune some parameters to optimize for different metrics.
+<img src='images/forest_comparison.png'>
+The model optimized for accuracy is very good with a 0.809 `accuracy`, however it leaves some to be desired with its low `recall_macro`.
+> Recall with a **macro-weight** is a harsher metric than "weighted" because it finds a balance between the categories equally, rather than making it more important to correctly identify the more-common categories.
+
+### K-Neighbors Classifier
+
+#### Vanilla Model
+```python
+"""
+******************************************************
+*        KNN Classifier Classification Report        *
+******************************************************
+                         precision    recall  f1-score   support
+
+             functional       0.77      0.86      0.81      8065
+functional needs repair       0.48      0.31      0.38      1079
+         non functional       0.79      0.71      0.75      5706
+
+               accuracy                           0.76     14850
+              macro avg       0.68      0.63      0.65     14850
+           weighted avg       0.76      0.76      0.76     14850
+"""
+```
+<img src='images/vanilla_knn.png'>
+
+#### KNN GridSearch
+<img src='images/knn_comparison.png'>
+These models aren't showing as much accuracy as the Random Forests, nor do they seem to be better at finding the minority class `functional needs repair`.
+
+### XGBoost
+
+#### Vanilla Model
+```python
+"""
+*************************************************************
+*        Vanilla XGBClassifier Classification Report        *
+*************************************************************
+                         precision    recall  f1-score   support
+
+             functional       0.72      0.93      0.81      8065
+functional needs repair       0.62      0.12      0.21      1079
+         non functional       0.84      0.61      0.71      5706
+
+               accuracy                           0.75     14850
+              macro avg       0.73      0.56      0.57     14850
+           weighted avg       0.76      0.75      0.73     14850
+"""
+```
+<img src='images/vanilla_xgb.png'>
+
+#### XGB GridSearch
+<img src='images/xgb_comparison.png'>
+The XGB models are tending to prioritize over-guessing the most common target variable - `functional`.
+
+## Class Imbalance: SMOTE-NC
+There are certainly some decent results, but a more balanced training set might help the models predict the minority classes.
+
+- **SMOTENC** is a version of *SMOTE* which can handle one-hot-encoded columns by indicating which columns to treat as categorical.
+- It will then create new data points (synthetically) to train on with hopes to get better modeling results.
+
+```python
+"""
+*********************************************
+*        Original Class Distribution        *
+*********************************************
+0    0.543075
+2    0.384242
+1    0.072682
+Name: status_group, dtype: float64
+****************************************
+*        Resampled Distribution        *
+****************************************
+2    0.333333
+1    0.333333
+0    0.333333
+Name: status_group, dtype: float64
+"""
+```
+### Fit re-sampled data.
+In some ways, these models are performing much better than with the unbalanced training data.
+- They are predicting the minority class *much* more accurately.
+- The f1-macro score has increased.
+
+However, their accuracy has diminished due in large part to the number of the majority class (*functional*) which are being mislabeled.
+
+***
+
+Finally, I'm going to try an ensemble with these three classifiers with the SMOTE data to improve the final predictions.
+
+## Creating an Ensemble
+### Train Separately on Resampled Data and Original Data
+These are two very interesting models.
+***
+**Original Training Data Model**
+- On one hand, we have a model which has a higher overall accuracy (0.81).
+- **0.9 recall** for functional water pumps, **0.77 recall** for non-functional pumps.
+- The drawback is that more functional needs repair pumps are mislabeled than labeled correctly.
+
+**Resampled Training Data Model**
+- The first point to note is the 
+- The accuracy is lower (**0.78**), but non functional recall is improved slightly (from 0.77 to **0.79**)
+- This model would be good if you especially wanted to try and catch a water pump before it became non functional if it were cheaper to repair it.improvement in the minority class functional needs repair.
+
+## Results
+### REAL_TEST predictions
+**Random Forest - Original Sampling**
+<img src='rfc_results.png'>
+**Ensemble - Original Sampling Method**
+<img src='original_sample_results.png'>
+**Ensemble - Post-SMOTE-NC Sampling**
+<img src='resampled_results.png'>
+
+## Conclusion & Final Model
+
+While the Ensemble Classifier improved performance by 3%, the computational cost of training the three different classifiers and retrieving their predictions is very large.
+Therefore, if I were to deploy a model, I would pick the **Random Forest Classifier**.
+
+The Random Forest has the added benefits of being highly interpretable, very robust to noise and outliers, and is prone not to overfit. 
+
+```python
+RandomForestClassifier(bootstrap=False, 
+                       criterion='entropy', 
+                       min_samples_leaf=3, 
+                       random_state=51)
+```
+
+### Metrics
+#### Full
+```python
+"""
+*********************************************************
+*        Final Model - RFC Classification Report        *
+*********************************************************
+                         precision    recall  f1-score   support
+
+             functional       0.79      0.93      0.85      8065
+functional needs repair       0.69      0.25      0.37      1079
+         non functional       0.86      0.75      0.80      5706
+
+               accuracy                           0.81     14850
+              macro avg       0.78      0.64      0.67     14850
+           weighted avg       0.81      0.81      0.80     14850
+"""
+```
+**Precision-Normalization**
+<img src='images/final_confusion.png'>
+
+- Out of the predicted values, 11% of non-functional wells were mislabeled as functional, while 18% of wells needing repair were functional.
+- If the model predicted a functional well, it was correct 79% of the time.
+
+#### Binary
+```python
+"""
+                             precision    recall  f1-score   support
+
+                 functional       0.79      0.93      0.85      8065
+needs_repair/non_functional       0.89      0.70      0.78      6785
+
+                   accuracy                           0.82     14850
+                  macro avg       0.84      0.81      0.82     14850
+               weighted avg       0.83      0.82      0.82     14850
+"""
+```
+
+| | functional |	needs_repair/non_functional | |
+|-|-|-|-|
+functional |	7473 |	592
+needs_repair/non_functional |	2044 |	4741
+
+- When predicting wells that are not `class_0` (not **functional**), it is correct 88.9% of the time.
+ - *(Precision score for `needs_repair/non_functional`)*
+- The model is clearly very reliable when asked to find non-functioning wells.
+- **Using this model to drive maintenance plans will reduce the number of `non-functional` / `needs repairs` wells by 69.875%.**
+ - $\frac{correctly identified}{total existing}$
+
+### Trees
+
+- The `RandomForestClassifier` is an ensemble of n-`DecisionTreeClassifier`s. This model has the default 100 Decision Trees.
+- Each tree is fit on a different subset of the training data and therefore has different *opinions* on determining the classification. These trees vote and the Forest uses all of its trees to pick a classification.
+- Because of this, we can look "under the hood" at these trees and how they work.
+<img src='images/trees_example.png'>
+
+- Orange: `functional`
+- Green: `functional needs repair`
+- Purple: `non functional`
+***
+- Each tree above is showing the first three splits for space, but will split down until there are 3 entries per "leaf" which will then determine the classification.
+- `Tree_0` uses `quantity_enough` to split into a group where (on the left) 52% of entries are `non functional` and (on the right) 65% of entries are `functional`.
+ - ...and so on...
+
+#### Feature Importances
+<img src='images/trees_imps.png'>
+
+- As you can see the feature importances of these two trees are massively different.
+- The trees share an opinion of the relative importance of the `latitude`, `longitude`, and `gps_height` columns.
+
+### Forest Feature Importances
+<img src='images/forest_imps.png'>
+
+- The full Forest has feature importances based on its 100 estimators (trees).
+ - You can see by inspecting the features listed that the Forest is similar to both trees above.
+- The overall most important feature according to this Forest is `quantity` - namely whether or not the well is dry.
+ - Presumably, dry wells are overwhelmingly non-functional / needing repair.
+
+# Conclusion
+## What do I look for to tell if a water pump needs maintenance?
+
+1. **Quantity**: Pay attention to the quantity of water in the well.
+ - Wells that are labeled as **dry** are almost all *non functional*.
+ - Conversely, less than 25% of wells that have **enough** water are *non functional*.
+ - Note: The missing values for this feature are not missing at random (ie: when the label is **unknown**, it is much more likely to be *non functional*).
+- **Latitude / Longitude**: While there are functional and non functional wells spread over the country, there do seem to be "pockets" of non-functional wells. This could be due to the water source or other geographical features of an area.
+ - If there is a pocket of *non functional* wells in an area, other wells in the same area might be *non functional* as well.
+- **Years Old**: Determining the year the well was built and how old it is is a major factor to whether it's working or not.
+ - The older a well is, the less likely it is *functional*.
+ - New wells are very likely to be *functional*.
+ - Wells built before **1990** are more likely to be *non functional* or *needing repair*, while after 1990 are more likely to be *functional*.
+- **Extraction Type**: Determining the extraction type will help get very useful information on whether the pump is working.
+ - **Gravity** pumps (the most common) are 60% likely to be *functional* and 25% to be *non functional*.
+ - The most common type or well to have more *non functional* wells than *functional* is **mono**. These have over a 60% chance to be at least *in need of repair*.
+ - Note: Wells that are labeled **other** have a much higher likelihood of being *non functional* than otherwise.
+- **Waterpoint Type**: Certain waterpoint types have a strong predictive quality.
+ - The most common **communal standpipe** is over 60% likely to be *functional* and 25% to be *non functional*.
+ - Having a **communal standpipe multiple** though increases the likelihood of the pump being *non functional* quite a lot.
+ - If the waterpoint type is less common (marked **other**), it is almost certainly (over 80%) *non functional*.
+ - It seems that **improved spring** wells are the most likely to need repairs (these waterpoint types may require more frequent maintenance than others).
+- **Amount Total Static Head**: Most wells have 0 total static head (available static water). Wells that have more than 0 **tsh** are much more likely to be *functional*.
+ - As a general principal, the greater the **tsh**, the more likely it is to be *functional*.
