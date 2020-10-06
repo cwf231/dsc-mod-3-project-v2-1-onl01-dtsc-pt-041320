@@ -11,12 +11,13 @@ from sklearn import metrics, config_context
 from sklearn.dummy import DummyClassifier
 from sklearn.model_selection import train_test_split, GridSearchCV, cross_val_score
 from sklearn.feature_selection import VarianceThreshold
-from sklearn.preprocessing import StandardScaler, LabelEncoder, OneHotEncoder
+from sklearn.preprocessing import StandardScaler, LabelEncoder, OneHotEncoder, QuantileTransformer
 from sklearn.impute import SimpleImputer
 from sklearn.pipeline import Pipeline
 from sklearn.compose import ColumnTransformer
 from sklearn.tree import DecisionTreeClassifier, plot_tree
 from sklearn.linear_model import LogisticRegression
+from sklearn.svm import SVC
 from sklearn.ensemble import RandomForestClassifier, StackingClassifier
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.svm import SVC
@@ -24,6 +25,8 @@ from xgboost import XGBClassifier
 
 from imblearn.over_sampling import SMOTENC
 
+import plotly.express as px
+import shap
 import missingno
 import pickle
 from joblib import dump, load
@@ -81,13 +84,31 @@ def underline(string, character='-'):
     return character * len(string)
     
     
-def headerize(string, character='*'):
+def headerize(string, character='*', max_len=80):
     """
     Return a given string with a box (of given character) around it.
     """
-    top = character * (len(f'{string}')+18)
-    mid = f'{character}{" " * 8}{string}{" " * 8}{character}'
-    bot = top
+    if max_len:
+        # Create uniform size boxes for headers with centered text.
+        if len(string) > max_len-2:
+            string = string[:max_len-5] + '...'
+            
+        total_space = max_len - 2 - len(string)
+        left = total_space // 2
+        if total_space % 2 == 0:
+            right = left
+        else:
+            right = left + 1
+        
+        top = character * 80
+        mid = f'{character}{" " * left}{string}{" " * right}{character}'
+        bot = top
+    else:
+        # Create modular header boxes depending on the length of the string.
+        top = character * (len(f'{string}')+42)
+        mid = f'{character}{" " * 20}{string}{" " * 20}{character}'
+        bot = top
+        
     return f'{top}\n{mid}\n{bot}'
 
 
@@ -246,7 +267,7 @@ def preliminary_eda(dataframe,
         y_vals = sorted(plot_df[y].unique())
         
         r = list(range(len(x_cols), -1, -1))  # y-tick markers.
-        colors_lst = ['#1f77b4', '#1fb43d', '#b41fb2']
+        colors_lst = ['#1fb426', '#ccc125', '#b41f38']
         
         # Assign percent values for each category.
         vals_dct = {}
@@ -272,7 +293,7 @@ def preliminary_eda(dataframe,
         plt.yticks(r, x_cols)
         ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.15),
                   fancybox=True, shadow=True, ncol=5)
-        ax.axvline(0.5, ls=':', color='red')
+        ax.axvline(0.5, ls=':', color=COLOR)
         ax.set(title=f'Percent Stacked Barplot\n{x}',
                xlabel='Percent of Entries')
     fig.tight_layout()
@@ -299,10 +320,11 @@ class Stopwatch:
     stop_time: datetime object
         The recorded time the stopwatch stopped.
     """
-    def __init__(self, auto_start=True):
+    def __init__(self, auto_start=True, default_color='#1f77b4'):
         self.start_time = None
         self.times = []
         self.stop_time = None
+        self.default_color=default_color
         
         if auto_start:
             self.start()
@@ -431,7 +453,7 @@ class Stopwatch:
             y = [0 for _ in x]
             
             # Plot, annotate, format.
-            ax.scatter(x=x, y=y)
+            ax.scatter(x=x, y=y, color=self.default_color)
             if annotate:
                 [plt.annotate(label, 
                               (x[i], y[i]), 
@@ -439,9 +461,9 @@ class Stopwatch:
                  for i, (label, x_val) in enumerate(times)]
             if vlines:
                 if mark_elapsed_time:
-                    [ax.axvline(x_val, ls=':') for x_val in x]
+                    [ax.axvline(x_val, ls=':', color=self.default_color) for x_val in x]
                 else:
-                    [ax.axvline(i[1], ls=':') for i in times]
+                    [ax.axvline(i[1], ls=':', color=self.default_color) for i in times]
             
             # Hide y-ticks.
             ax.set_yticklabels([])
@@ -463,6 +485,7 @@ def show_metrics(model,
                  y_test, 
                  label='', 
                  target_names=None, 
+                 normalize='true',
                  return_report=False):
     """
     Print a Classification Report, a Confusion Matrix, and a ROC-Curve.
@@ -481,6 +504,10 @@ def show_metrics(model,
     target_names: list (default: None)
         If provided, the confusion matrix will show class names 
         rather than encoded classes.
+    normalize: string (default: 'true')
+        Provide a string (or None) for whether the values in the 
+        confusion matrix should be normalized.
+        Passing None will display the actual values.
     return_report: bool (default: False)
         If set to True, the classification report dictionary will be returned.
         
@@ -505,7 +532,7 @@ def show_metrics(model,
         fig, (ax1, ax2) = plt.subplots(ncols=2, figsize=(10, 5))
         metrics.plot_confusion_matrix(model, X_test, y_test,
                                       display_labels=target_names,
-                                      normalize='true', cmap='Blues', ax=ax1)
+                                      normalize=normalize, cmap='Blues', ax=ax1)
         ax1.set(title='Confusion Matrix')
         ax1.grid(False)
 
@@ -518,7 +545,7 @@ def show_metrics(model,
         fig, ax = plt.subplots(figsize=(10, 5))
         metrics.plot_confusion_matrix(model, X_test, y_test,
                                       display_labels=target_names,
-                                      normalize='true', cmap='Blues', ax=ax)
+                                      normalize=normalize, cmap='Blues', ax=ax)
         ax.set(title='Confusion Matrix')
         ax.grid(False)
         if target_names is not None:
@@ -696,3 +723,29 @@ def show_metrics_for_df(gridsearch_df,
                      target_names=target_names)
         watch.lap(label=label)
     watch.display_laps()
+    
+    
+def plot_on_map(dataframe, 
+                lat_col='latitude',
+                lon_col='longitude',
+                color=None,
+                color_lst=['#b41f38', '#1fb426', '#ccc125']):
+    """
+    Plot a dataframe on a map using Plotly Express.
+    
+    Returns a plotly figure.
+    """
+    m_lat = dataframe['latitude'].mean()
+    m_lon = dataframe['longitude'].mean()
+    
+    fig = px.scatter_geo(data_frame=dataframe,
+                         lat=lat_col,
+                         lon=lon_col,
+                         color=color,
+                         color_discrete_sequence=color_lst,
+                         opacity=0.5,
+                         center={'lat': m_lat, 'lon': m_lon},
+                         title='Geography of Wells (by well condition)')
+    fig.update_geos(fitbounds="locations")
+
+    return fig
