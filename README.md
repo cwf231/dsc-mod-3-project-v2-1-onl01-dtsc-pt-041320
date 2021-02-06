@@ -131,15 +131,22 @@ We will still need a test-train split.
 ### Feature Selection with Decision Tree
 #### Geographic Columns
 Since there are an unbelievable number of categories in some of these columns, I'm going to utilize a Decision Tree Classifier to choose the most important features from these columns. From these, I will drop the column but keep the most important n-columns.
+
 <img src='images/imp_geo_feats.png'>
+
 **For example:**
+
 <img src='images/example_geo.png'>
+
 You can see clearly the difference in distribution of functional water pumps based on whether or not a pump belongs to the region Iringa.
 
 #### `funder` Column
 Similarly to the geographical columns which were too numerous to include, there are way too many unique categories for `funder`.
+
 <img src='images/imp_fund_feats.png'>
-<img src='images/example_fund.png'>
+
+<img src='images/example_fund.PNG'>
+
 Over half of pumps funded by the Government of Tanzania are non-functional.
 
 ## Missing Values
@@ -147,7 +154,8 @@ Over half of pumps funded by the Government of Tanzania are non-functional.
 
 ## Preprocessing with Pipeline
 ### Column Transformer
-<img src='images/transformer.png'>
+
+<img src='images/transformer.PNG'>
 
 ## Feature Selecting: Identify Constant and Correlated Columns
 
@@ -351,10 +359,15 @@ These are two very interesting models.
 ## Results
 ### REAL_TEST predictions
 **Random Forest - Original Sampling**
-<img src='rfc_results.png'>
+
+<img src='rfc_results.PNG'>
+
 **Ensemble - Original Sampling Method**
+
 <img src='original_sample_results.png'>
+
 **Ensemble - Post-SMOTE-NC Sampling**
+
 <img src='resampled_results.png'>
 
 ## Conclusion & Final Model
