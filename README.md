@@ -360,15 +360,15 @@ These are two very interesting models.
 ### REAL_TEST predictions
 **Random Forest - Original Sampling**
 
-<img src='rfc_results.PNG'>
+<img src='./images/rfc_results.PNG'>
 
 **Ensemble - Original Sampling Method**
 
-<img src='original_sample_results.png'>
+<img src='./images/original_sample_results.png'>
 
 **Ensemble - Post-SMOTE-NC Sampling**
 
-<img src='resampled_results.png'>
+<img src='./images/resampled_results.png'>
 
 ## Conclusion & Final Model
 

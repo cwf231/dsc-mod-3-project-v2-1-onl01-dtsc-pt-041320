@@ -26,7 +26,6 @@ from xgboost import XGBClassifier
 from imblearn.over_sampling import SMOTENC
 
 import plotly.express as px
-import shap
 import missingno
 import pickle
 from joblib import dump, load
